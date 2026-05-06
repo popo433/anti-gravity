@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>自治体経営シミュレーション - THE MAYOR'S DECISION -</title>
+    <style>
+        :root {
+            --bg: #0a0f1e;
+            --panel: rgba(16, 24, 48, 0.92);
+            --border: rgba(255,255,255,0.12);
+            --primary: #3b82f6;
+            --accent: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --purple: #8b5cf6;
+            --pink: #ec4899;
+            --text: #f1f5f9;
+            --sub: #94a3b8;
+            --city: #0ea5e9;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+        html, body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100%;
+            overflow-x: hidden;
+        }
+
+        body {
+            background: linear-gradient(160deg, #020617 0%, #0f172a 50%, #1e1b4b 100%);
+            background-attachment: fixed;
+        }
+
+        /* 背景スクロールを完全にロックするための設定 */
+        html.lock-scroll, body.lock-scroll {
+            overflow: hidden !important;
+            height: 100vh !important;
+            position: fixed !important;
+            width: 100% !important;
+        }
+
+        /* ===== スタート画面 ===== */
+        #startup {
+            position: fixed; inset: 0; z-index: 9000;
+            background: linear-gradient(160deg, #020617 0%, #0f172a 60%, #1e1b4b 100%);
+            display: flex; flex-direction: column; align-items: center;
+            overflow-y: auto; padding: 24px 16px 40px;
+        }
+        .start-logo {
+            font-size: clamp(1rem, 4vw, 1.5rem);
+            font-weight: 900;
+            letter-spacing: 0.05em;
+            text-align: center;
+            margin-bottom: 6px;
+            background: linear-gradient(90deg, #38bdf8, #818cf8, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .start-sub {
+            font-size: clamp(0.65rem, 2.5vw, 0.85rem);
+            color: var(--sub);
+            text-align: center;
+            letter-spacing: 0.15em;
+            margin-bottom: 20px;
+        }
+        .start-story {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            font-size: clamp(0.78rem, 3.2vw, 0.95rem);
+            line-height: 1.75;
+            color: var(--sub);
+            margin-bottom: 22px;
+            width: 100%;
+            max-width: 520px;
+        }
+        .start-story p + p { margin-top: 10px; }
+        .start-story strong { color: var(--text); }
+        .start-input-area { width: 100%; max-width: 320px; margin-bottom: 24px; }
+        .start-input-area label {
+            display: block; font-size: 0.8rem; font-weight: bold;
+            color: var(--city); margin-bottom: 8px; letter-spacing: 0.05em;
+        }
+        .start-input-area input {
+            width: 100%; padding: 13px 16px;
+            font-size: 1.1rem; border-radius: 10px;
+            border: 2px solid var(--city);
+            background: rgba(0,0,0,0.5); color: white;
+            text-align: center; outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .start-input-area input:focus {
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 3px rgba(56,189,248,0.2);
+        }
+        .start-btn {
+            width: 100%; max-width: 320px;
+            padding: 16px; font-size: 1.1rem; font-weight: bold;
+            background: linear-gradient(135deg, var(--primary), var(--purple));
+            color: white; border: none; border-radius: 12px;
+            cursor: pointer; transition: 0.2s; letter-spacing: 0.05em;
+            box-shadow: 0 4px 20px rgba(59,130,246,0.4);
+        }
+        .start-btn:active { transform: scale(0.97); }
+        .difficulty-row {
+            display: flex; gap: 8px; width: 100%; max-width: 320px;
+            margin-bottom: 20px;
+        }
+        .diff-btn {
+            flex: 1; padding: 10px 5px; font-size: 0.8rem; font-weight: bold;
+            border-radius: 8px; border: 1.5px solid var(--border);
+            background: rgba(255,255,255,0.04); color: var(--sub);
+            cursor: pointer; transition: 0.2s; text-align: center;
+        }
+        .diff-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(16,185,129,0.12); }
+
+        /* ===== ヘッダー ===== */
+        #game-header {
+            position: sticky; top: 0; z-index: 100;
+            background: rgba(2,6,23,0.9);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 14px;
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 10px;
+        }
+        .hdr-year {
+            font-size: clamp(1.1rem, 5vw, 1.6rem);
+            font-weight: 900; color: #fff;
+            text-shadow: 0 0 12px rgba(255,255,255,0.4);
+            white-space: nowrap;
+        }
+        .hdr-phase {
+            font-size: clamp(0.65rem, 2.8vw, 0.85rem);
+            color: var(--sub); text-align: center; line-height: 1.3;
+        }
+        .hdr-score {
+            font-size: clamp(0.7rem, 2.8vw, 0.9rem);
+            font-weight: bold; color: var(--warning);
+            white-space: nowrap; text-align: right;
+        }
+
+        /* ===== メインコンテンツ ===== */
+        #game-main {
+            padding: 12px 12px 30px;
+            display: flex; flex-direction: column; gap: 12px;
+            max-width: 600px; margin: 0 auto; width: 100%;
+        }
+
+        /* ===== 都市ステータスカード ===== */
+        .city-card {
+            background: var(--panel);
+            border: 1.5px solid var(--city);
+            border-radius: 14px;
+            padding: 12px 14px;
+            box-shadow: 0 0 20px rgba(14,165,233,0.12);
+        }
+        .city-card-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 10px;
+        }
+        .city-name-disp {
+            font-size: clamp(0.95rem, 4vw, 1.15rem);
+            font-weight: bold; color: var(--city);
+        }
+        .bankrupt-badge {
+            font-size: 0.7rem; background: var(--danger);
+            padding: 2px 8px; border-radius: 10px; color: white; font-weight: bold;
+            display: none;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        .stat-box {
+            background: rgba(0,0,0,0.4);
+            border-radius: 8px;
+            padding: 7px 9px;
+            position: relative; overflow: hidden;
+        }
+        .stat-label {
+            font-size: clamp(0.6rem, 2.3vw, 0.7rem);
+            color: var(--sub); margin-bottom: 2px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .stat-val {
+            font-size: clamp(0.85rem, 3.5vw, 1.05rem);
+            font-weight: bold; color: var(--text);
+            line-height: 1.1; margin-bottom: 4px;
+        }
+        .gauge-bg {
+            width: 100%; height: 4px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 2px; overflow: hidden;
+        }
+        .gauge-fill {
+            height: 100%;
+            transition: width 0.5s cubic-bezier(0.4,0,0.2,1), background-color 0.4s;
+        }
+        .stat-bl .gauge-fill { background: var(--accent); }
+        .stat-reserve .gauge-fill { background: #34d399; }
+        .stat-wb .gauge-fill { background: var(--pink); }
+        .stat-pop .gauge-fill { background: var(--primary); }
+        .stat-vi .gauge-fill { background: var(--warning); }
+        .stat-ag .gauge-fill { background: var(--purple); }
+
+        .city-visual {
+            width: 100%; height: 72px;
+            background: rgba(0,0,0,0.35);
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.08);
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 2px; padding: 5px;
+            cursor: pointer; position: relative; overflow: hidden;
+            transition: border-color 0.2s;
+        }
+        .cell {
+            border-radius: 2px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: clamp(0.75rem, 2.8vw, 1rem);
+            background: rgba(255,255,255,0.015);
+        }
+
+        /* ===== イベントカード ===== */
+        .event-card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 14px 16px;
+        }
+        .event-year-badge {
+            display: inline-block;
+            font-size: 0.7rem; font-weight: bold;
+            background: rgba(16,185,129,0.2);
+            border: 1px solid var(--accent);
+            color: var(--accent); border-radius: 6px;
+            padding: 2px 8px; margin-bottom: 8px;
+        }
+        .event-title {
+            font-size: clamp(1rem, 4.5vw, 1.25rem);
+            font-weight: bold; color: var(--accent);
+            margin-bottom: 8px; line-height: 1.3;
+        }
+        .event-desc {
+            font-size: clamp(0.78rem, 3.2vw, 0.9rem);
+            line-height: 1.65; color: var(--sub);
+        }
+
+        /* ===== 選択ボタン群 ===== */
+        .choices-list {
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .action-btn {
+            background: rgba(255,255,255,0.04);
+            border: 1.5px solid var(--border);
+            border-radius: 12px;
+            padding: 13px 14px;
+            cursor: pointer; text-align: left;
+            transition: background 0.15s, border-color 0.15s, transform 0.1s;
+            display: flex; flex-direction: column; gap: 5px;
+            position: relative; overflow: hidden;
+            color: var(--text);
+            width: 100%;
+        }
+        .action-btn:active {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.45);
+            transform: scale(0.99);
+        }
+        .btn-icon-bg {
+            position: absolute; right: -4px; bottom: -10px;
+            font-size: 3.5rem; opacity: 0.1; pointer-events: none;
+            line-height: 1;
+        }
+        .btn-title {
+            font-size: clamp(0.9rem, 3.8vw, 1.05rem);
+            font-weight: bold; color: #fff; line-height: 1.2;
+        }
+        .btn-desc {
+            font-size: clamp(0.72rem, 3vw, 0.82rem);
+            color: var(--sub); line-height: 1.4;
+        }
+        .btn-footer {
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 5px; margin-top: 2px;
+        }
+        .btn-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+        .tag {
+            font-size: 0.65rem;
+            background: rgba(255,255,255,0.12);
+            color: #fff; padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid rgba(255,255,255,0.3);
+            font-weight: bold;
+        }
+        .eff-badge {
+            font-size: 0.75rem; font-weight: bold;
+            padding: 3px 8px; border-radius: 5px;
+            background: rgba(0,0,0,0.5);
+        }
+        .eff-down { color: var(--danger); border-left: 3px solid var(--danger); }
+        .eff-up { color: var(--accent); border-left: 3px solid var(--accent); }
+        .eff-zero { color: var(--sub); border-left: 3px solid var(--sub); }
+
+        /* ===== ポップアップ ===== */
+        #backdrop {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.72);
+            backdrop-filter: blur(6px);
+            z-index: 800; display: none;
+        }
+        #backdrop.show { display: block; }
+
+        .modal {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0.85);
+            background: rgba(10,15,35,0.97);
+            border: 2px solid var(--border);
+            border-radius: 18px;
+            padding: clamp(18px,5vw,32px) clamp(14px,5vw,28px);
+            z-index: 1000;
+            width: min(92vw, 480px);
+            max-height: 85vh; overflow-y: auto;
+            text-align: center;
+            opacity: 0; pointer-events: none;
+            transition: 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+        }
+        .modal.show {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1; pointer-events: auto;
+        }
+        .modal-title {
+            font-size: clamp(1.1rem, 5vw, 1.6rem);
+            font-weight: bold; margin-bottom: 10px;
+        }
+        .modal-desc {
+            font-size: clamp(0.82rem, 3.2vw, 0.98rem);
+            line-height: 1.6; color: var(--sub); margin-bottom: 18px;
+        }
+        .eff-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px; margin-bottom: 16px;
+            background: rgba(0,0,0,0.3);
+            padding: 12px; border-radius: 10px;
+        }
+        .eff-item { font-size: clamp(0.85rem, 3.5vw, 1rem); font-weight: bold; }
+        .eff-item-label { font-size: 0.65rem; color: var(--sub); font-weight: normal; }
+        .val-plus { color: var(--accent); }
+        .val-minus { color: var(--danger); }
+        .modal-btn {
+            padding: 12px 28px;
+            font-size: clamp(0.9rem, 3.5vw, 1rem);
+            background: white; color: black;
+            border: none; border-radius: 10px;
+            cursor: pointer; font-weight: bold;
+            transition: transform 0.1s;
+        }
+        .modal-btn:active { transform: scale(0.97); }
+
+        .history-list {
+            list-style: none; padding: 0; margin-bottom: 16px;
+        }
+        .history-item {
+            padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.08);
+            display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+        }
+        .history-year { color: var(--accent); font-weight: bold; font-size: 0.8rem; min-width: 52px; }
+
+        /* ===== エンディングオーバーレイ ===== */
+        #overlay {
+            position: fixed; inset: 0; z-index: 5000;
+            background: rgba(0,0,0,0.93);
+            display: flex; flex-direction: column; align-items: center;
+            overflow-y: auto; padding: 40px 16px 60px;
+            opacity: 0; pointer-events: none; transition: 0.5s;
+        }
+        #overlay.active { opacity: 1; pointer-events: auto; }
+        #overlay h1 {
+            font-size: clamp(1.4rem, 6vw, 2.2rem);
+            font-weight: 900; margin-bottom: 20px; text-align: center;
+        }
+        .ending-card {
+            width: 100%; max-width: 500px;
+            background: rgba(16, 24, 48, 0.95);
+            border: 1.5px solid var(--city);
+            border-radius: 16px; padding: 24px 20px;
+            margin-bottom: 20px;
+        }
+        .ending-score {
+            font-size: clamp(2rem, 10vw, 3rem);
+            font-weight: 900; text-align: center;
+            margin: 10px 0;
+        }
+        .ending-rank {
+            font-size: clamp(1.3rem, 6vw, 2rem);
+            font-weight: bold; text-align: center; margin-bottom: 12px;
+        }
+        .ending-stats {
+            font-size: clamp(0.75rem, 3vw, 0.85rem);
+            background: rgba(0,0,0,0.3); border-radius: 8px;
+            padding: 12px; margin-bottom: 14px;
+        }
+        .ending-stat-row {
+            display: flex; justify-content: space-between;
+            padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .ending-stat-row:last-child { border-bottom: none; }
+        .ending-comment-box {
+            font-size: clamp(0.72rem, 2.8vw, 0.82rem);
+            color: var(--sub); line-height: 1.7;
+            background: rgba(255,255,255,0.04);
+            border-radius: 10px; padding: 14px;
+            text-align: left;
+        }
+        .replay-btn {
+            width: 100%; max-width: 320px;
+            padding: 16px; font-size: 1.05rem; font-weight: bold;
+            background: linear-gradient(135deg, var(--accent), #059669);
+            color: white; border: none; border-radius: 12px;
+            cursor: pointer; margin-top: 10px;
+            box-shadow: 0 4px 20px rgba(16,185,129,0.4);
+        }
+
+        .float-text {
+            position: fixed; font-weight: bold;
+            font-size: clamp(0.85rem, 3.5vw, 1.1rem);
+            pointer-events: none;
+            animation: floatUp 2.5s forwards; z-index: 2000;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.9);
+        }
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-55px); }
+        }
+
+        .progress-bar-wrap {
+            background: rgba(255,255,255,0.06);
+            border-radius: 6px; height: 5px;
+            overflow: hidden; margin-bottom: 4px;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--purple));
+            border-radius: 6px;
+            transition: width 0.6s ease;
+        }
+        .progress-label {
+            font-size: 0.65rem; color: var(--sub);
+            text-align: right; margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- スタート画面 -->
+<div id="startup">
+    <div style="width:100%; max-width:520px; display:flex; flex-direction:column; align-items:center;">
+        <div style="font-size:clamp(0.6rem,2vw,0.75rem); letter-spacing:0.2em; color:var(--sub); margin-bottom:8px;">PROJECT ANTI-GRAVITY</div>
+        <h1 class="start-logo">自治体経営シミュレーション</h1>
+        <div class="start-sub">THE MAYOR'S DECISION</div>
+
+        <div class="start-story">
+            <p>あなたに託されたのは、昭和の遺産が悲鳴を上げる<strong>インフラ維持費</strong>の増大、膨れ上がる<strong>社会保障費</strong>、および減り続ける<strong>若者・子ども</strong>というシビアな現実。自治体の消滅可能性だ。</p>
+            <p>すべてを「維持」することは、もはや不可能。学校を閉校するか、道路を直さないか、それとも新しい活路に賭けるか。誰もが口を閉ざす<strong>「痛みを伴う再編」</strong>に、今、メスを入れる。</p>
+            <p style="color:var(--text);">2040年、この街が地図に残っているために…<br>あなたの選択が未来を創る。</p>
+        </div>
+
+        <div class="start-input-area">
+            <label>🏙️ あなたの都市名</label>
+            <input type="text" id="city-name-input" value="未来市" maxlength="12">
+        </div>
+
+        <div style="width:100%; max-width:320px; margin-bottom:8px;">
+            <div style="font-size:0.75rem; color:var(--sub); margin-bottom:8px; font-weight:bold;">難易度</div>
+            <div class="difficulty-row">
+                <button class="diff-btn" onclick="setDiff('easy')">🌱 易しい</button>
+                <button class="diff-btn active" onclick="setDiff('normal')">⚡ 普通</button>
+                <button class="diff-btn" onclick="setDiff('hard')">🔥 難しい</button>
+            </div>
+        </div>
+
+        <button class="start-btn" onclick="startGame()">▶ ゲームを始める</button>
+        <div style="font-size:0.7rem; color:var(--sub); margin-top:14px; text-align:center;">10のイベント、約15〜20分</div>
+    </div>
+</div>
+
+<!-- ゲームヘッダー -->
+<div id="game-header" style="display:none;">
+    <div class="hdr-year" id="hdr-year">2026年</div>
+    <div class="hdr-phase" id="hdr-phase">イベント 1/10<br>政策を選択</div>
+    <div class="hdr-score" id="hdr-score">基金<br><span id="hdr-reserve">100</span></div>
+</div>
+
+<!-- メインゲームエリア -->
+<div id="game-main" style="display:none;">
+
+    <!-- 都市ステータスカード -->
+    <div class="city-card" id="city-card">
+        <div class="city-card-header">
+            <span class="city-name-disp" id="city-name-disp">未来市</span>
+            <span class="bankrupt-badge" id="bankrupt-badge">財政破綻</span>
+        </div>
+
+        <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" id="progress-bar" style="width:10%"></div>
+        </div>
+        <div class="progress-label" id="progress-label">2026年（10年間のうち1年目）</div>
+
+        <div class="stats-grid">
+            <div class="stat-box stat-bl">
+                <div class="stat-label">年間収支</div>
+                <div class="stat-val" id="s-bl">+1</div>
+                <div class="gauge-bg"><div class="gauge-fill" id="g-bl" style="width:52%"></div></div>
+            </div>
+            <div class="stat-box stat-reserve">
+                <div class="stat-label">基金（財源）</div>
+                <div class="stat-val" id="s-re">100</div>
+                <div class="gauge-bg"><div class="gauge-fill" id="g-re" style="width:33%"></div></div>
+            </div>
+            <div class="stat-box stat-wb">
+                <div class="stat-label">WB 幸福度</div>
+                <div class="stat-val" id="s-wb">50</div>
+                <div class="gauge-bg"><div class="gauge-fill" id="g-wb" style="width:25%"></div></div>
+            </div>
+            <div class="stat-box stat-pop">
+                <div class="stat-label">人口</div>
+                <div class="stat-val" id="s-po">100</div>
+                <div class="gauge-bg"><div class="gauge-fill" id="g-po" style="width:50%"></div></div>
+            </div>
+            <div class="stat-box stat-vi">
+                <div class="stat-label">活性度</div>
+                <div class="stat-val" id="s-vi">100</div>
+                <div class="gauge-bg"><div class="gauge-fill" id="g-vi" style="width:50%"></div></div>
+            </div>
+            <div class="stat-box stat-ag">
+                <div class="stat-label">高齢化率</div>
+                <div class="stat-val" id="s-ag">33.0%</div>
+                <div class="gauge-bg"><div class="gauge-fill" id="g-ag" style="width:33%"></div></div>
+            </div>
+        </div>
+
+        <div class="city-visual" id="city-visual" onclick="openHistory()"></div>
+    </div>
+
+    <!-- イベントカード -->
+    <div class="event-card">
+        <div class="event-year-badge" id="ev-year-badge">2026年のテーマ</div>
+        <h2 class="event-title" id="ev-title">イベントタイトル</h2>
+        <p class="event-desc" id="ev-desc">説明文</p>
+    </div>
+
+    <!-- 選択肢 -->
+    <div class="choices-list" id="choices-list"></div>
+
+</div>
+
+<!-- backdrop -->
+<div id="backdrop"></div>
+
+<!-- 汎用ポップアップ -->
+<div id="popup" class="modal">
+    <div id="popup-title" class="modal-title">通知</div>
+    <p id="popup-desc" class="modal-desc"></p>
+    <div id="popup-eff" class="eff-grid" style="display:none;"></div>
+    <button class="modal-btn" onclick="closePopup()">確認して次へ →</button>
+</div>
+
+<!-- 履歴モーダル -->
+<div id="history-modal" class="modal" style="text-align:left;">
+    <h2 class="modal-title" style="font-size:1.1rem; margin-bottom:12px;">📋 政策実行履歴</h2>
+    <div style="margin-bottom:12px;">
+        <div style="font-size:0.75rem; font-weight:bold; color:var(--accent); margin-bottom:6px;">✨ 発動済みシナジー</div>
+        <div id="hm-synergies" style="font-size:0.8rem; color:var(--sub); background:rgba(0,0,0,0.3); padding:8px; border-radius:8px;"></div>
+    </div>
+    <div style="font-size:0.75rem; font-weight:bold; color:var(--primary); margin-bottom:6px;">📜 政策リスト</div>
+    <ul id="hm-list" class="history-list"></ul>
+    <button class="modal-btn" onclick="closeHistory()" style="width:100%;">閉じる</button>
+</div>
+
+<!-- エンディング -->
+<div id="overlay">
+    <h1 id="ov-title">ゲーム終了</h1>
+    <div id="ov-desc" style="width:100%; max-width:500px; text-align:center;"></div>
+    <button class="replay-btn" id="replay-btn" style="display:none;" onclick="location.reload()">🔄 もう一度プレイ</button>
+</div>
+
+<script>
+// ============================================================
+// 難易度設定
+// ============================================================
+let difficulty = 'normal';
+const DIFF = {
+    easy:   { popDec: 2, viDec: 1.5, agInc: 0.3, startReserve: 150 },
+    normal: { popDec: 4, viDec: 3,   agInc: 0.5, startReserve: 100 },
+    hard:   { popDec: 6, viDec: 4.5, agInc: 0.8, startReserve: 80  }
+};
+function setDiff(d) {
+    difficulty = d;
+    document.querySelectorAll('.diff-btn').forEach((b,i) => {
+        b.classList.toggle('active', ['easy','normal','hard'][i] === d);
+    });
+}
+
+// ============================================================
+// イベントデータ（原文準拠 / 後年効果を1年後に調整）
+// ============================================================
+const events = [
+    {
+        year: 2026, title: "働き方と育児のあり方",
+        desc: "「仕事か、育児か」——時代遅れの社会構造が若者たちを追い詰め、街の未来である子供たちの姿が消えつつあります。市長、早急な決断が求められています。",
+        actions: [
+            { title: "働き方の抜本改革", desc: "男性育児参加・テレワーク支援を推進", tags: ["福祉","IT","ビジネス"], effects: { reserve: -15, wb: +20, vitality: +3 }, delayed: { delay: 3, effects: { pop: +3, wb: +10 }, msg: "両立のしやすさが評判になり、移住者が少し増加！", icon: "👨‍👩‍👧‍👦" }, icon: "💻" },
+            { title: "待機児童・放課後対策の充実", desc: "認可保育園の定員増・放課後児童クラブ延長", tags: ["福祉"], effects: { reserve: -20, pop: +2, wb: +5 }, delayed: { delay: 3, effects: { pop: +1, wb: +5 }, msg: "待機児童が減少し、共働き世帯が定着！", icon: "🏫" }, icon: "🍼" },
+            { title: "こども交流センター建設", desc: "屋内遊具施設を兼ね備えた新たな公共施設の建設", tags: ["インフラ","福祉"], effects: { reserve: -20, baseBalance: -3, vitality: +3 }, delayed: { delay: 1, effects: { baseBalance: -1 }, msg: "施設の維持費がのしかかってきました...", icon: "📉" }, icon: "🏢" },
+            { title: "啓発ポスターの掲示のみ", desc: "「みんなで子育て」啓発ポスターを各所に貼る", tags: ["保守"], effects: { reserve: -1, wb: -2 }, delayed: null, icon: "📄" }
+        ]
+    },
+    {
+        year: 2027, title: "人生の選択肢の保障",
+        desc: "「結婚し、子供を持つのが当たり前」という古い同調圧力が、多様な生き方を望む市民の幸福度を著しく低下させています。あなたのスタンスが問われています。",
+        actions: [
+            { title: "多様な生き方宣言", desc: "独身・子なし世帯の権利保障、関連施策の広報", tags: ["多様性","福祉"], effects: { reserve: -5, wb: +21, vitality: +3 }, delayed: { delay: 2, effects: { pop: +2 }, msg: "「ありのままでいられる街」として移住者が定着！", icon: "🤝" }, icon: "🏳️‍🌈" },
+            { title: "ライフプランセミナー開催", desc: "結婚出産などの人生設計を具体化し、将来不安の解消を図る", tags: ["教育","保守"], effects: { reserve: -5, pop: +1, wb: -5 }, delayed: { delay: 3, effects: { pop: +4 }, msg: "セミナー参加者から新たな家庭が誕生！", icon: "💍" }, icon: "🏫" },
+            { title: "婚活アプリ開発", desc: "市営の婚活アプリを開発・運用", tags: ["インフラ","IT"], effects: { reserve: -15, baseBalance: -2, vitality: +1 }, delayed: { delay: 1, effects: { pop: +1, wb: +5 }, msg: "アプリの維持費と引き換えに出会いが増加！", icon: "💖" }, icon: "📱" },
+            { title: "卵子凍結補助の実施", desc: "高額な医療費を公費で補助", tags: ["福祉"], effects: { reserve: -20, wb: +10, pop: +1, aging: -0.5 }, delayed: { delay: 4, effects: { baseBalance: -2, pop: +1 }, msg: "自治体間での補助金競争になり、財政負担が増加...", icon: "📉" }, icon: "❄️" }
+        ]
+    },
+    {
+        year: 2028, title: "移住施策の動機",
+        desc: "近隣自治体との「人口奪い合い」が激化する中、本市もまた、限られたリソースをどこに集中させるか、戦略の転換を迫られています。",
+        actions: [
+            { title: "公共施設を自己実現の場として開放", desc: "感性や人間関係を重視する層の支援", tags: ["移住","多様性"], effects: { reserve: -10, wb: +15, vitality: +5 }, delayed: { delay: 2, effects: { pop: +3, vitality: +3 }, msg: "多様な人材が定着し、街に活気が生まれました！", icon: "✨" }, icon: "🎨" },
+            { title: "子育て世代限定の奨励金", desc: "移住者への直接的な現預金給付", tags: ["移住","福祉"], effects: { reserve: -25, pop: +5, wb: +5 }, delayed: { delay: 2, effects: { pop: +5 }, msg: "奨励金に惹かれて子育て世帯がさらに流入！", icon: "👶" }, icon: "💰" },
+            { title: "移住体験モデルハウス建設", desc: "暮らし体験ができるモデルハウスを設置し移住誘導", tags: ["インフラ","移住"], effects: { reserve: -20, baseBalance: -3, pop: +1 }, delayed: { delay: 1, effects: { pop: +1, vitality: +1 }, msg: "維持費がかかりますが、本格的な移住者が現れました！", icon: "🏠" }, icon: "🏡" },
+            { title: "移住サイトの充実のみ", desc: "HPのデザインやコンテンツを拡充する", tags: ["保守"], effects: { reserve: -1 }, delayed: null, icon: "🌐" }
+        ]
+    },
+    {
+        year: 2029, title: "農業の後継者不足",
+        desc: "農業従事者の急速な高齢化により、かつて豊かだった農地は次々と荒れ果てた耕作放棄地へと変貌しています。街の原風景をどう守り、どう利用しますか？",
+        actions: [
+            { title: "スマート農業の導入支援", desc: "ロボットで省力化・生産性向上", tags: ["農業","IT"], effects: { reserve: -20, pop: +1, vitality: +2, wb: +5 }, delayed: { delay: 2, effects: { vitality: +3, baseBalance: +1, wb: +10 }, msg: "スマート農業の普及により収益性が向上！", icon: "🌾" }, icon: "🚜" },
+            { title: "新規就農者の強力サポート", desc: "家と農地をセットで提供", tags: ["農業","移住"], effects: { reserve: -15, pop: +1, vitality: +1, aging: -1, wb: +10 }, delayed: { delay: 3, effects: { pop: +1, vitality: +2, aging: -2, wb: +15 }, msg: "若手農家が定着し新ブランド誕生！", icon: "🧑‍🌾" }, icon: "🏡" },
+            { title: "メガソーラー化", desc: "景観は悪化するものの税収増が狙え収支改善が期待される", tags: ["インフラ"], effects: { reserve: -10, baseBalance: +2, vitality: -2, wb: -5 }, delayed: { delay: 4, effects: { baseBalance: +2, reserve: +20 }, msg: "売電収入が安定した収益として寄与！", icon: "⚡" }, icon: "☀️" },
+            { title: "農産物の6次産業化", desc: "生産・商品開発・販売のトータルで所得を向上", tags: ["農業","ビジネス"], effects: { reserve: -10, vitality: +5, baseBalance: +1 }, delayed: { delay: 3, effects: { vitality: +10, baseBalance: +2 }, msg: "地域の農業所得が大幅に向上！", icon: "🍅" }, icon: "🌻" }
+        ]
+    },
+    {
+        year: 2030, title: "公共施設の老朽化と活用",
+        desc: "昭和時代に建てられた大量の公共施設が一斉に寿命を迎え、財政の時限爆弾となっています。待ったなしの決断です。",
+        actions: [
+            { title: "市民主導の「サードプレイス」化", desc: "小規模でも質の高い交流拠点へ改装", tags: ["リノベ","福祉"], effects: { reserve: -15, wb: +20, vitality: +5 }, delayed: { delay: 2, effects: { wb: +10, baseBalance: +1 }, msg: "民営化で収支が改善し、市民の憩いの場に！", icon: "☕" }, icon: "🛋️" },
+            { title: "複合施設への統廃合", desc: "機能を集約し維持コストを削減する。一部市民からは猛反発...", tags: ["インフラ","行政"], effects: { reserve: -20, baseBalance: +6, vitality: +2, pop: +1, wb: -10 }, delayed: { delay: 1, effects: { baseBalance: +10, reserve: +10 }, msg: "統廃合による劇的なコスト削減効果！", icon: "📈" }, icon: "🏢" },
+            { title: "全面的な改修工事（ハコモノ）", desc: "最新設備を導入し最先端のインフラ環境へ", tags: ["インフラ"], effects: { reserve: -30, baseBalance: -7, vitality: +5, wb: +25 }, delayed: null, icon: "🏗️" },
+            { title: "事業の抜本見直し", desc: "多くの補助事業をゼロにして財政再建を図る", tags: ["緊縮","保守"], effects: { reserve: 0, baseBalance: +10, wb: -50, vitality: -30 }, delayed: null, icon: "🔒" }
+        ]
+    },
+    {
+        year: 2031, title: "外国人材との共生",
+        desc: "深刻な人手不足により、市内産業は外国人労働者なしでは立ち行かない限界状況にあります。彼らを「市民」として迎え入れるか。",
+        actions: [
+            { title: "多文化共生の土壌づくり", desc: "個性の尊重と市民レベルの交流促進", tags: ["多様性","国際"], effects: { reserve: -10, wb: +20, vitality: +5 }, delayed: { delay: 3, effects: { pop: +2, vitality: +3, wb: +10 }, msg: "外国人が地域社会に定着！", icon: "🤝" }, icon: "🤝" },
+            { title: "産業界要望による労働者受入", desc: "人手不足を補うための労働力確保", tags: ["ビジネス","国際"], effects: { reserve: -5, pop: +3, vitality: +3 }, delayed: { delay: 2, effects: { pop: +3 }, msg: "労働者が定住し、人口減少が一時緩和。", icon: "👷" }, icon: "👷" },
+            { title: "多文化共生センターの設置", desc: "多様性啓発の拠点施設を整備", tags: ["インフラ","国際"], effects: { reserve: -20, baseBalance: -4, wb: -10 }, delayed: null, icon: "🏛️" },
+            { title: "窓口に翻訳機を置くだけ", desc: "最低限の対応のみ行う", tags: ["保守"], effects: { reserve: -1, wb: -1 }, delayed: null, icon: "🤖" }
+        ]
+    },
+    {
+        year: 2032, title: "関係人口と新たな連帯",
+        desc: "もはや「住む人」だけでは経済が回らない中、観光客や副業人材といった関係人口の獲得が急務です。",
+        actions: [
+            { title: "挑戦と感謝の場づくり", desc: "副業・多拠点居住者への活躍機会提供", tags: ["IT","ビジネス","移住"], effects: { reserve: -10, vitality: +8, wb: +20 }, delayed: { delay: 2, effects: { reserve: +10 }, msg: "外貨の流入により財政が潤いました！", icon: "🪙" }, icon: "🚀" },
+            { title: "交流人口による地域経済の活性化", desc: "大規模な周遊キャンペーンを展開", tags: ["観光","ビジネス"], effects: { reserve: -15, vitality: +5 }, delayed: { delay: 1, effects: { reserve: +15 }, msg: "観光客の消費で収益が向上しました。", icon: "🛍️" }, icon: "💴" },
+            { title: "駅前サテライトオフィス建設", desc: "テレワーク需要を取り込むリノベーション", tags: ["インフラ","IT"], effects: { reserve: -15, baseBalance: -4, vitality: +2 }, delayed: null, icon: "🏢" },
+            { title: "ふるさと納税と組み合わせたPR", desc: "ふるさと納税者に市の魅力をPR", tags: ["保守"], effects: { reserve: -1, wb: +1 }, delayed: null, icon: "📮" }
+        ]
+    },
+    {
+        year: 2033, title: "人生の豊かさの再定義",
+        desc: "市民が複数の居場所を持ち、自律的に学び、助け合える環境を整えるのか。「豊かさ」をどう再定義するかが問われます。",
+        actions: [
+            { title: "プロティアン・キャリア推奨", desc: "生涯学習と多様なスキル習得の支援", tags: ["教育","ビジネス"], effects: { reserve: -15, wb: +25, vitality: +5 }, delayed: null, icon: "🎓" },
+            { title: "観光PR動画作成", desc: "動画作成とWEB広報戦略", tags: ["観光"], effects: { reserve: -10, vitality: +4 }, delayed: { delay: 1, effects: { reserve: +10 }, msg: "一時的に観光客が増加しました。", icon: "👀" }, icon: "🎥" },
+            { title: "祭り体験施設建設", desc: "魅力を最大限PRできる体験施設建設", tags: ["インフラ","観光"], effects: { reserve: -25, baseBalance: -6, vitality: +3 }, delayed: null, icon: "🏮" },
+            { title: "スローガン策定のみ", desc: "抽象的な標語の公表のみ", tags: ["保守"], effects: { reserve: -1 }, delayed: null, icon: "📜" }
+        ]
+    },
+    {
+        year: 2034, title: "社会モデルの完全転換",
+        desc: "縮小を前提とした「成熟社会」へと街の構造を根本から転換するのか、最後の望みを託すのか。",
+        actions: [
+            { title: "成熟社会への適応シフト", desc: "縮小を前提とした地域計画を見直しを断行", tags: ["多様性","行政","福祉"], effects: { reserve: -5, wb: -20, vitality: -3 }, delayed: { delay: 3, effects: { wb: +40, vitality: +10 }, msg: "成熟した価値観が根付き、市民の幸福度が安定！", icon: "🌱" }, icon: "🌱" },
+            { title: "移住支援金の拡充", desc: "移住者に支援金を支給し、自治体間競争に打ち勝つ", tags: ["保守"], effects: { reserve: -20, pop: +2, wb: -5 }, delayed: { delay: 2, effects: { pop: +1 }, msg: "根本的解決には至りません。", icon: "💧" }, icon: "💸" },
+            { title: "複合文化施設の建設", desc: "大型ホールを併設する施設建設", tags: ["インフラ","教育"], effects: { reserve: -35, baseBalance: -7, vitality: +8, wb: +20 }, delayed: { delay: 1, effects: { baseBalance: -8 }, msg: "巨大施設の維持費がのしかかってきました...", icon: "📉" }, icon: "🏛️" },
+            { title: "外部アドバイザーの設置", desc: "EBPMによる政策実行", tags: ["緊縮","保守"], effects: { reserve: -1, baseBalance: +2, wb: -5 }, delayed: null, icon: "👨‍💼" }
+        ]
+    },
+    {
+        year: 2035, title: "幸福と共生のビジョン宣言",
+        desc: "これまで積み上げてきた政策の集大成として、街にどのような未来を約束しますか？",
+        actions: [
+            { title: "成熟社会宣言", desc: "個人の幸福と選択の自由を最優先", tags: ["多様性","福祉","教育"], effects: { reserve: -5, wb: +50, vitality: +10 }, delayed: { delay: 5, effects: { pop: +3, wb: +30 }, msg: "幸福度の高さが全国に知れ渡りました！", icon: "🕊️" }, icon: "🌅" },
+            { title: "企業誘致のための工業団地造成", desc: "働く場の確保のため製造業を誘致する", tags: ["行政","ビジネス"], effects: { reserve: +20, pop: +3, wb: +5 }, delayed: { delay: 5, effects: { reserve: +20, baseBalance: +3, pop: -3 }, msg: "税収は増えましたが若者が流出...", icon: "🏭" }, icon: "🏭" },
+            { title: "駅前再開発ビル建設", desc: "駅前活力の向上のため最後の賭けに出る！", tags: ["インフラ","商業"], effects: { reserve: -40, baseBalance: -10, vitality: +3 }, delayed: { delay: 5, effects: { vitality: +25, baseBalance: +2 }, msg: "再開発ビル完成！", icon: "🏙️" }, icon: "🏙️" },
+            { title: "前年踏襲の予算編成", desc: "何もしないことによる終焉", tags: ["緊縮","保守"], effects: { wb: -5, vitality: -5 }, delayed: { delay: 5, effects: { wb: -30, pop: -10 }, msg: "衰退が始まっています...", icon: "📉" }, icon: "📉" }
+        ]
+    }
+];
+
+// ============================================================
+// ゲーム状態
+// ============================================================
+class Player {
+    constructor() {
+        this.cityName = "未来市";
+        this.initialReserve = 100;
+        this.initialAging = 33.0;
+        this.isBankrupt = false;
+        this.bankruptYear = null;
+        this.baseBalance = 1;
+        this.balance = 1;
+        this.reserve = 100;
+        this.pop = 100;
+        this.vitality = 100;
+        this.aging = 33.0;
+        this.wb = 50;
+        this.history = [];
+        this.synergies = [];
+        this.effectQueue = [];
+        this.cells = [];
+    }
+}
+
+let player = new Player();
+let state = {
+    yearIndex: 0,
+    isProcessing: false,
+    popupQueue: []
+};
+let popupCallback = null;
+
+function startGame() {
+    const name = document.getElementById('city-name-input').value.trim() || "未来市";
+    const df = DIFF[difficulty];
+    player = new Player();
+    player.cityName = name;
+    player.reserve = df.startReserve;
+    player.initialReserve = df.startReserve;
+
+    document.getElementById('startup').style.display = 'none';
+    document.getElementById('game-header').style.display = 'flex';
+    document.getElementById('game-main').style.display = 'flex';
+    document.getElementById('city-name-disp').textContent = name;
+
+    recalculateBalance();
+    updateUI();
+    loadEvent();
+}
+
+function recalculateBalance() {
+    let popBonus = Math.floor((player.pop - 100) * 0.05);
+    let viBonus = Math.floor((player.vitality - 100) * 0.05);
+    player.balance = player.baseBalance + popBonus + viBonus;
+}
+
+function updateUI() {
+    const p = player;
+    const year = 2026 + state.yearIndex;
+    document.getElementById('hdr-year').textContent = `${year}年`;
+    document.getElementById('hdr-phase').textContent = state.yearIndex < 10 ? `イベント ${state.yearIndex + 1}/10\n政策を選択` : `最終シミュレート中...\n${year}年`;
+    document.getElementById('hdr-reserve').textContent = Math.floor(p.reserve);
+
+    const bl = p.balance;
+    document.getElementById('s-bl').textContent = bl > 0 ? `+${bl}` : bl;
+    document.getElementById('s-re').textContent = Math.floor(p.reserve);
+    document.getElementById('s-wb').textContent = Math.floor(p.wb);
+    document.getElementById('s-po').textContent = Math.floor(p.pop);
+    document.getElementById('s-vi').textContent = p.vitality.toFixed(1); // 活性度は小数第1位まで表示
+    document.getElementById('s-ag').textContent = p.aging.toFixed(1) + '%';
+
+    const setG = (id, val, max=200, center=false) => {
+        const el = document.getElementById(id);
+        let pct = center ? Math.min(100, Math.max(0, 50 + val * 2)) : Math.min(100, Math.max(0, (val / max) * 100));
+        el.style.width = pct + '%';
+        if (center) el.style.background = val < 0 ? 'var(--danger)' : 'var(--accent)';
+    };
+    setG('g-bl', p.balance, 0, true);
+    setG('g-re', p.reserve, 300);
+    setG('g-wb', p.wb, 200);
+    setG('g-po', p.pop, 200);
+    setG('g-vi', p.vitality, 200);
+    setG('g-ag', p.aging, 100);
+
+    const prog = Math.min(100, ((state.yearIndex) / 10) * 100);
+    document.getElementById('progress-bar').style.width = prog + '%';
+    document.getElementById('progress-label').textContent = `${year}年（10年間のうち ${Math.min(state.yearIndex + 1, 10)} 年目）`;
+    document.getElementById('bankrupt-badge').style.display = p.isBankrupt ? 'inline-block' : 'none';
+
+    const visual = document.getElementById('city-visual');
+    visual.innerHTML = '';
+    for (let i = 0; i < 30; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        if (i < p.cells.length) cell.textContent = p.cells[i];
+        else cell.textContent = Math.random() > 0.8 ? '🌲' : '';
+        visual.appendChild(cell);
+    }
+}
+
+function loadEvent() {
+    if (state.yearIndex >= events.length) return;
+    const ev = events[state.yearIndex];
+    document.getElementById('ev-year-badge').textContent = `${ev.year}年のテーマ`;
+    document.getElementById('ev-title').textContent = ev.title;
+    document.getElementById('ev-desc').textContent = ev.desc;
+
+    const list = document.getElementById('choices-list');
+    list.innerHTML = '';
+
+    ev.actions.forEach((act, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'action-btn';
+        const r = act.effects.reserve;
+        let effHtml = r !== undefined ? `<span class="eff-badge ${r < 0 ? 'eff-down' : r > 0 ? 'eff-up' : 'eff-zero'}">基金 ${r < 0 ? '−'+Math.abs(r) : r > 0 ? '+'+r : '±0'}</span>` : '';
+        const tagsHtml = act.tags.map(t => `<span class="tag">${t}</span>`).join('');
+        btn.innerHTML = `<div class="btn-icon-bg">${act.icon}</div><div class="btn-title">${act.title}</div><div class="btn-desc">${act.desc}</div><div class="btn-footer"><div class="btn-tags">${tagsHtml}</div>${effHtml}</div>`;
+        btn.onclick = () => selectAction(idx);
+        list.appendChild(btn);
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function selectAction(idx) {
+    if (state.isProcessing) return;
+    state.isProcessing = true;
+    const ev = events[state.yearIndex];
+    const act = ev.actions[idx];
+    player.history.push({ year: ev.year, title: act.title, tags: act.tags });
+    document.querySelectorAll('.action-btn').forEach(b => { b.style.opacity = '0.4'; b.style.pointerEvents = 'none'; });
+    state.popupQueue.push({ title: "政策実行結果", desc: act.desc, effects: act.effects, icon: act.icon, isImmediate: true });
+    if (act.delayed) player.effectQueue.push({ targetYear: state.yearIndex + act.delayed.delay, effects: act.delayed.effects, msg: act.delayed.msg, icon: act.delayed.icon || "✨" });
+    showNextPopup(() => { 
+        if (player.reserve < 0) {
+            player.isBankrupt = true;
+            player.bankruptYear = 2026 + state.yearIndex;
+            showEnding();
+            return;
+        }
+        advanceYear(); 
+    });
+}
+
+function applyEffects(eff) {
+    if (eff.baseBalance !== undefined) player.baseBalance += eff.baseBalance;
+    if (eff.reserve !== undefined) player.reserve += eff.reserve;
+    if (eff.pop !== undefined) player.pop += eff.pop;
+    if (eff.vitality !== undefined) {
+        player.vitality += eff.vitality;
+        // 活性度の四捨五入処理（小数第1位まで）
+        player.vitality = Math.round(player.vitality * 10) / 10;
+    }
+    if (eff.aging !== undefined) player.aging += eff.aging;
+    if (eff.wb !== undefined) player.wb += eff.wb;
+    recalculateBalance();
+}
+
+function advanceYear() {
+    const df = DIFF[difficulty];
+    if (player.isBankrupt) return;
+
+    const naturalLoss = { pop: -df.popDec, vitality: -df.viDec, aging: df.agInc };
+    if (player.aging > 35) naturalLoss.vitality -= (player.aging - 35) * 0.6;
+    
+    player.reserve += player.balance;
+    const finalBalance = player.balance;
+    state.yearIndex++;
+
+    checkQueuesAndSynergies(naturalLoss, () => {
+        if (player.reserve < 0) { 
+            player.isBankrupt = true; 
+            player.bankruptYear = 2026 + state.yearIndex;
+            showEnding(); 
+            return; 
+        }
+
+        if (state.yearIndex >= 10) {
+            processEpilogue();
+        } else {
+            updateUI();
+            loadEvent();
+            createFloatText(`収支 ${finalBalance >= 0 ? '+' : ''}${finalBalance}`, finalBalance >= 0 ? '#34d399' : '#ef4444');
+            state.isProcessing = false;
+        }
+    });
+}
+
+function checkQueuesAndSynergies(naturalLoss, callback) {
+    let popups = [{ title: "⚠️ 時代の波（少子高齢化の進行）", desc: "社会保障費の増大と高齢化の進展が、街の数値を押し下げています...", effects: naturalLoss, icon: "📉", isImmediate: false }];
+    
+    for (let i = player.effectQueue.length - 1; i >= 0; i--) {
+        const eq = player.effectQueue[i];
+        if (eq.targetYear === state.yearIndex) {
+            popups.push({ title: "将来効果 発現！", desc: eq.msg, effects: eq.effects, icon: eq.icon });
+            player.effectQueue.splice(i, 1);
+        }
+    }
+
+    const titles = player.history.map(h => h.title);
+    const checkSyn = (name, req, eff, desc, icon) => {
+        if (player.synergies.some(s => s.name === name)) return;
+        if (req.every(t => titles.includes(t))) {
+            player.synergies.push({ name, causes: req });
+            popups.push({ title: `✨ シナジー【${name}】`, desc, effects: eff, icon });
+        }
+    };
+    checkSyn("デジタルノマド誘致", ["働き方の抜本改革","駅前サテライトオフィス建設"], { pop: +5, vitality: +10, baseBalance: +1 }, "テレワーク環境の整備とオフィスが相乗効果を生み、ノマドワーカーが殺到！", "💻");
+    checkSyn("多文化・共生コミュニティ", ["多様な生き方宣言","多文化共生の土壌づくり"], { wb: +20, pop: +3, vitality: +5 }, "包摂的な街として、移住者が定着！", "🤝");
+    checkSyn("アグリベンチャーの聖地", ["スマート農業の導入支援","挑戦と感謝の場づくり"], { baseBalance: +4, vitality: +15 }, "農業とITの融合により、革新的なビジネスが誕生！", "🚜");
+    checkSyn("次世代型子育て支援", ["待機児童・放課後対策の充実","子育て世代限定の奨励金"], { pop: +10, aging: -2, wb: +20 }, "完璧な支援体制により、子育て世代が急増！", "🍼");
+    checkSyn("サードプレイス経済圏", ["公共施設を自己実現の場として開放","市民主導の「サードプレイス」化"], { vitality: +20, wb: +15, baseBalance: +1 }, "市民の活動拠点が有機的に繋がり、新しい文化が誕生！", "☕");
+    checkSyn("キャリア自律都市", ["多様な生き方宣言","プロティアン・キャリア推奨"], { wb: +25, vitality: +15 }, "自分らしく学べる街として、全体の活力が向上！", "🎓");
+    checkSyn("完全なる成熟社会モデル", ["働き方の抜本改革","成熟社会への適応シフト","成熟社会宣言"], { wb: +50, pop: +10, vitality: +15 }, "縮小を幸福に変える姿勢が全国から称賛の的に！", "🕊️");
+    checkSyn("究極の子育て・教育都市", ["待機児童・放課後対策の充実","子育て世代限定の奨励金","プロティアン・キャリア推奨"], { pop: +15, aging: -5, wb: +20 }, "教育環境の充実により、人口増の好循環が発生！", "📚");
+    checkSyn("重厚長大ハコモノ行政", ["こども交流センター建設","全面的な改修工事（ハコモノ）","駅前再開発ビル建設"], { vitality: +30, baseBalance: -15 }, "一見華やかですが、莫大な維持費が未来を食い潰す！", "🏗️");
+
+    state.popupQueue = state.popupQueue.concat(popups);
+    showNextPopup(callback);
+}
+
+function showNextPopup(callback) {
+    if (callback) popupCallback = callback;
+    if (state.popupQueue.length === 0) {
+        if (popupCallback) { const cb = popupCallback; popupCallback = null; cb(); }
+        return;
+    }
+    const pop = state.popupQueue.shift();
+    applyEffects(pop.effects || {});
+    if (pop.icon && pop.isImmediate !== false) player.cells.push(pop.icon);
+    updateUI();
+    const pBox = document.getElementById('popup');
+    
+    document.documentElement.classList.add('lock-scroll');
+    document.body.classList.add('lock-scroll');
+    document.getElementById('backdrop').classList.add('show');
+    
+    document.getElementById('popup-title').innerHTML = `${pop.icon || ''} ${pop.title}`;
+    document.getElementById('popup-desc').textContent = pop.desc;
+    let effHtml = '';
+    const addE = (label, val) => { 
+        if (val === undefined || val === 0) return; 
+        const sign = val > 0 ? '+' : ''; 
+        const cls = val > 0 ? 'val-plus' : 'val-minus'; 
+        const displayVal = (label === '活性度' || label === '高齢化') ? val.toFixed(1) : val;
+        effHtml += `<div class="eff-item"><div class="eff-item-label">${label}</div><div class="${cls}">${sign}${displayVal}</div></div>`; 
+    };
+    addE('収支', pop.effects?.baseBalance); addE('基金', pop.effects?.reserve); addE('WB幸福', pop.effects?.wb); addE('人口', pop.effects?.pop); addE('活性度', pop.effects?.vitality); addE('高齢化', pop.effects?.aging);
+    const effGrid = document.getElementById('popup-eff');
+    effGrid.innerHTML = effHtml; effGrid.style.display = effHtml ? 'grid' : 'none';
+    pBox.classList.add('show');
+}
+
+function closePopup() {
+    const pBox = document.getElementById('popup');
+    if (!pBox.classList.contains('show')) return;
+    pBox.classList.remove('show');
+    if (state.popupQueue.length === 0) {
+        document.getElementById('backdrop').classList.remove('show');
+        document.documentElement.classList.remove('lock-scroll');
+        document.body.classList.remove('lock-scroll');
+    }
+    setTimeout(() => showNextPopup(), 350);
+}
+
+function openHistory() {
+    const p = player;
+    document.getElementById('hm-synergies').innerHTML = p.synergies.length > 0 
+        ? p.synergies.map(s => `<div style="margin-bottom:6px;"><span class="tag" style="background:rgba(16,185,129,0.3);">${s.name}</span><div style="font-size:0.7rem; color:var(--sub);">💡 ${s.causes.join(' ＋ ')}</div></div>`).join('')
+        : "まだ発動していません";
+    document.getElementById('hm-list').innerHTML = p.history.map(h => `<li class="history-item"><span class="history-year">${h.year}年</span><span style="font-weight:bold; font-size:0.85rem; flex:1;">${h.title}</span></li>`).join('');
+    
+    document.documentElement.classList.add('lock-scroll');
+    document.body.classList.add('lock-scroll');
+    document.getElementById('backdrop').classList.add('show');
+    document.getElementById('history-modal').classList.add('show');
+}
+
+function closeHistory() {
+    document.getElementById('history-modal').classList.remove('show');
+    document.getElementById('backdrop').classList.remove('show');
+    document.documentElement.classList.remove('lock-scroll');
+    document.body.classList.remove('lock-scroll');
+}
+
+function processEpilogue() {
+    if (state.yearIndex >= 15) {
+        showEnding();
+        return;
+    }
+
+    const df = DIFF[difficulty];
+    const naturalLoss = { pop: -df.popDec, vitality: -df.viDec, aging: df.agInc };
+    if (player.aging > 35) naturalLoss.vitality -= (player.aging - 35) * 0.6;
+    
+    player.reserve += player.balance;
+    
+    if (state.yearIndex === 10) {
+        state.popupQueue.push({ 
+            title: "そして、未来へ...", 
+            desc: "市長としての任期は終わりました。下した決断の効果は、これから数年にわたって街の姿を決定づけます。2040年までの推移を見てみましょう。", 
+            effects: {}, icon: "⌛", isImmediate: true 
+        });
+    }
+
+    state.yearIndex++;
+    checkQueuesAndSynergies(naturalLoss, () => {
+        if (player.reserve < 0) { 
+            player.isBankrupt = true; 
+            player.bankruptYear = 2026 + state.yearIndex;
+            showEnding(); 
+            return; 
+        }
+        processEpilogue();
+    });
+}
+
+function showEnding() {
+    const p = player;
+    document.documentElement.classList.add('lock-scroll');
+    document.body.classList.add('lock-scroll');
+
+    let bankruptcyReason = "";
+    if (p.isBankrupt) {
+        if (p.baseBalance < -5) bankruptcyReason = "過剰な施設維持費が財源を枯渇させました。";
+        else if (p.aging > 42) bankruptcyReason = "高齢化による社会保障負担の激増が財政を破壊しました。";
+        else if (p.pop < 60) bankruptcyReason = "人口激減による税収消失で行政サービスが停止しました。";
+        else bankruptcyReason = "長期的な赤字が基金を飲み込みました。";
+    }
+
+    document.getElementById('ov-title').textContent = p.isBankrupt ? `${p.bankruptYear}年 財政破綻` : "2040年 最終リザルト";
+    document.getElementById('ov-title').style.color = p.isBankrupt ? "var(--danger)" : "var(--text)";
+    
+    let score = Math.floor(p.wb * 1.5 + p.vitality * 1.0 + Math.max(p.reserve, 0) * 0.5);
+    if (p.isBankrupt) score = Math.floor(score * 0.3);
+
+    let rank = "E", rankColor = "var(--danger)";
+    if (!p.isBankrupt) {
+        if (score >= 1000) { rank = "SS"; rankColor = "#34d399"; }
+        else if (score >= 700) { rank = "S"; rankColor = "var(--primary)"; }
+        else if (score >= 400) { rank = "A"; rankColor = "#a78bfa"; }
+        else if (score >= 200) { rank = "B"; rankColor = "#34d399"; }
+    } else {
+        rank = score > 150 ? "C" : "D";
+    }
+
+    const diffStr = (cur, ini) => { const d = Math.floor(cur) - Math.floor(ini); return (d >= 0 ? '+' : '') + d; };
+    const diffFloatStr = (cur, ini) => { const d = (cur - ini).toFixed(1); return (d >= 0 ? '+' : '') + d; };
+    const dc = (v) => v.startsWith('+') ? 'var(--accent)' : 'var(--danger)';
+    const agDc = (v) => v.startsWith('+') ? 'var(--danger)' : 'var(--accent)';
+
+    const popD = diffStr(p.pop, 100), viD = diffFloatStr(p.vitality, 100), wbD = diffStr(p.wb, 50), reD = diffStr(p.reserve, player.initialReserve), agD = diffFloatStr(p.aging, 33.0);
+
+    const viCmt = p.vitality >= 150 ? "凄まじい活気。他市の追随を許さない。" : p.vitality >= 100 ? "活気は維持。しかし油断は禁物" : p.vitality >= 60  ? "街の静けさが目立つ。衰退の兆し。" : "完全にゴーストタウン化が進行中。";
+    
+    // 財政評価コメント（150超えの特別評価を追加）
+    let reCmt = "";
+    if (p.isBankrupt) {
+        reCmt = "基金枯渇。市政は崩壊し、隣接自治体への吸収合併を余儀なくされました。";
+    } else if (p.reserve > 150) {
+        reCmt = "財政再建を果たした。将来世代に誇れる偉業。";
+    } else if (p.reserve >= 100) {
+        reCmt = "基金は潤沢。次世代への責任を果たした。";
+    } else if (p.reserve >= 80) {
+        reCmt = "基金は現状維持。綱渡りの運用が続く。";
+    } else if (p.reserve >= 50) {
+        reCmt = "基金減少。将来の持続性に深刻な懸念。";
+    } else {
+        reCmt = "風前の灯。明日破綻してもおかしくない。";
+    }
+
+    const wbCmt = p.wb >= 200 ? "市民の幸福度は極めて高い状態。" : p.wb >= 80  ? "市民の不満は抑えられています。" : "市民の不満が限界水準に達しています。";
+
+    document.getElementById('ov-desc').innerHTML = `
+        <div class="ending-card" style="${p.isBankrupt ? 'border-color:var(--danger);' : ''}">
+            <div style="font-size:0.85rem; color:var(--sub); margin-bottom:4px;">${p.cityName}の結末</div>
+            <div class="ending-score" style="color:${rankColor};">${score} pt</div>
+            <div class="ending-rank" style="color:${rankColor};">ランク: ${rank}</div>
+            
+            ${p.isBankrupt ? `
+                <div style="background:rgba(239,68,68,0.1); border:1px solid var(--danger); border-radius:8px; padding:10px; margin-bottom:14px; font-size:0.8rem; color:var(--danger); text-align:left;">
+                    <strong>📉 破綻原因:</strong> ${bankruptcyReason}
+                </div>
+            ` : ''}
+
+            <div class="ending-stats">
+                <div class="ending-stat-row"><span>👥 人口</span><span>${Math.floor(p.pop)} <span style="color:${dc(popD)}; font-size:0.85em;">(${popD})</span></span></div>
+                <div class="ending-stat-row"><span>⚡ 活性度</span><span>${p.vitality.toFixed(1)} <span style="color:${dc(viD)}; font-size:0.85em;">(${viD})</span></span></div>
+                <div class="ending-stat-row"><span>💰 基金</span><span>${Math.floor(p.reserve)} <span style="color:${dc(reD)}; font-size:0.85em;">(${reD})</span></span></div>
+                <div class="ending-stat-row"><span>😊 WB幸福度</span><span>${Math.floor(p.wb)} <span style="color:${dc(wbD)}; font-size:0.85em;">(${wbD})</span></span></div>
+                <div class="ending-stat-row"><span>👴 高齢化率</span><span>${p.aging.toFixed(1)}% <span style="color:${agDc(agD)}; font-size:0.85em;">(${agD}%)</span></span></div>
+            </div>
+            <div class="ending-comment-box">
+                <div style="margin-bottom:8px;"><span style="color:var(--warning); font-weight:bold;">[活性]</span> ${viCmt}</div>
+                <div style="margin-bottom:8px;"><span style="color:var(--accent); font-weight:bold;">[財政]</span> ${reCmt}</div>
+                <div><span style="color:var(--pink); font-weight:bold;">[幸福]</span> ${wbCmt}</div>
+            </div>
+            ${player.synergies.length > 0 ? `<div style="margin-top:16px; font-size:0.75rem; text-align:left;"><div style="color:var(--accent); font-weight:bold; margin-bottom:4px;">✨ 発動した相乗効果 (${player.synergies.length}個)</div>${player.synergies.map(s => `<span class="tag" style="margin:2px; display:inline-block;">${s.name}</span>`).join('')}</div>` : ''}
+        </div>
+    `;
+    document.getElementById('overlay').classList.add('active');
+    document.getElementById('replay-btn').style.display = 'block';
+}
+
+function createFloatText(text, color) {
+    const el = document.createElement('div');
+    el.className = 'float-text';
+    el.textContent = text;
+    el.style.color = color; el.style.top = '60px'; el.style.left = '50%'; el.style.transform = 'translateX(-50%)';
+    document.body.appendChild(el); setTimeout(() => el.remove(), 2500);
+}
+</script>
+</body>
+</html>
